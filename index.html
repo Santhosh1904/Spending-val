@@ -57,30 +57,31 @@ select#filter {
     color: #fff;
 }
 
-/* Table styling */
+/* Table wrapper fix */
 .table-wrapper {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin-top: 20px;
+    padding: 0 10px; /* Added padding to prevent clipping */
+    box-sizing: border-box;
 }
 
+/* Table styling */
 table {
     width: 100%;
-    max-width: 100%;
-    margin: 0 auto;
     border-collapse: collapse;
     background: #2a2a3d;
     border-radius: 12px;
-    overflow: hidden;
     box-shadow: 0 0 15px rgba(0,0,0,0.3);
-    word-wrap: break-word;
+    min-width: 360px; /* Prevent excessive squeezing */
 }
 
 th, td {
     padding: 10px;
     text-align: center;
     font-size: 14px;
+    white-space: nowrap; /* Keep content visible */
 }
 
 th {
@@ -144,17 +145,16 @@ tr:nth-child(even) {
         min-width: 90px;
     }
 
+    table {
+        min-width: 400px; /* Ensures text visibility */
+    }
+
     #total {
         font-size: 16px;
     }
 
     #history h2 {
         font-size: 1rem;
-    }
-
-    table, #history table {
-        display: block;
-        width: 100%;
     }
 }
 </style>
