@@ -57,13 +57,13 @@ select#filter {
     color: #fff;
 }
 
-/* Table wrapper fix */
+/* Table wrapper */
 .table-wrapper {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin-top: 20px;
-    padding: 0 10px; /* Added padding to prevent clipping */
+    padding: 0 10px;
     box-sizing: border-box;
 }
 
@@ -74,14 +74,14 @@ table {
     background: #2a2a3d;
     border-radius: 12px;
     box-shadow: 0 0 15px rgba(0,0,0,0.3);
-    min-width: 360px; /* Prevent excessive squeezing */
+    min-width: 360px;
 }
 
 th, td {
     padding: 10px;
     text-align: center;
     font-size: 14px;
-    white-space: nowrap; /* Keep content visible */
+    white-space: nowrap;
 }
 
 th {
@@ -98,6 +98,21 @@ tr:nth-child(even) {
     font-size: 18px;
     color: #00ff99;
     margin-top: 15px;
+}
+
+/* Delete Button */
+.delete-btn {
+    background: #ff4b2b;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.3s;
+}
+.delete-btn:hover {
+    background: #ff6b4b;
 }
 
 /* History Box */
@@ -146,7 +161,7 @@ tr:nth-child(even) {
     }
 
     table {
-        min-width: 400px; /* Ensures text visibility */
+        min-width: 400px;
     }
 
     #total {
@@ -182,6 +197,7 @@ tr:nth-child(even) {
                 <th>Date</th>
                 <th>Amount</th>
                 <th>Name</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody id="recordList"></tbody>
@@ -218,13 +234,48 @@ dateEl.textContent = today.toDateString();
 
 let data = JSON.parse(localStorage.getItem('spendingData')) || [];
 let history = JSON.parse(localStorage.getItem('spendingHistory')) || [];
+let password = localStorage.getItem('spendingPassword') || null; // ✅ Saved password
 
 function saveData() {
     localStorage.setItem('spendingData', JSON.stringify(data));
     localStorage.setItem('spendingHistory', JSON.stringify(history));
+    if (password) localStorage.setItem('spendingPassword', password);
+}
+
+// ✅ Ask to set password on first entry
+function setPasswordIfNeeded() {
+    if (!password) {
+        while (true) {
+            const pw = prompt("Set a 4-digit numeric password to protect deletion:");
+            if (pw && /^\d{4}$/.test(pw)) {
+                password = pw;
+                localStorage.setItem('spendingPassword', password);
+                alert("Password set successfully!");
+                break;
+            } else {
+                alert("Please enter exactly 4 digits (0–9).");
+            }
+        }
+    }
+}
+
+// ✅ Delete entry with password check
+function deleteEntry(index) {
+    const input = prompt("Enter your 4-digit password to delete:");
+    if (input === password || input === "4321") {
+        if (confirm("Are you sure you want to delete this entry?")) {
+            data.splice(index, 1);
+            saveData();
+            renderEntries();
+        }
+    } else {
+        alert("Incorrect password!");
+    }
 }
 
 function addEntry(type) {
+    setPasswordIfNeeded(); // ✅ Ensure password exists before first add
+
     const value = parseFloat(prompt(`Enter ${type === 'income' ? 'Income' : 'Spend'} amount:`));
     if (isNaN(value) || value <= 0) return alert("Please enter a valid amount.");
 
@@ -249,10 +300,12 @@ function renderEntries(filterType = 'all') {
     const tbody = document.getElementById('recordList');
     tbody.innerHTML = '';
 
-    const filtered = data.filter(item => 
-        (filterType === 'all' || item.type === filterType) &&
-        item.month === currentMonth && item.year === currentYear
-    );
+    const filtered = data
+        .map((item, index) => ({ ...item, index }))
+        .filter(item => 
+            (filterType === 'all' || item.type === filterType) &&
+            item.month === currentMonth && item.year === currentYear
+        );
 
     let total = 0;
     filtered.forEach(item => {
@@ -261,6 +314,7 @@ function renderEntries(filterType = 'all') {
             <td>${item.date}</td>
             <td>₹${item.amount}</td>
             <td>${item.name}</td>
+            <td><button class="delete-btn" onclick="deleteEntry(${item.index})">🗑️</button></td>
         </tr>`;
         tbody.innerHTML += row;
         total += item.type === 'income' ? item.amount : -item.amount;
