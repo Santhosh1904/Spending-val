@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spending Val</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background: #1e1e2f;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+h1 {
+    color: #ffcc00;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+button {
+    margin: 10px 5px;
+    padding: 10px 20px;
+    font-size: 14px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+}
+
+.income-btn {
+    background: linear-gradient(45deg, #00c6ff, #0072ff);
+    color: #fff;
+}
+.spend-btn {
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    color: #fff;
+}
+
+.income-btn:hover, .spend-btn:hover {
+    transform: scale(1.05);
+}
+
+select#filter {
+    padding: 8px;
+    margin-top: 15px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    background: #33334d;
+    color: #fff;
+}
+
+/* Table styling */
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 20px;
+}
+
+table {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    border-collapse: collapse;
+    background: #2a2a3d;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    word-wrap: break-word;
+}
+
+th, td {
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+}
+
+th {
+    background: #3a3a5c;
+    color: #ffcc00;
+}
+
+tr:nth-child(even) {
+    background: #242438;
+}
+
+#total {
+    font-weight: bold;
+    font-size: 18px;
+    color: #00ff99;
+    margin-top: 15px;
+}
+
+/* History Box */
+#history {
+    width: 100%;
+    margin: 20px auto;
+    background: #2a2a3d;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 15px;
+    box-sizing: border-box;
+}
+
+#history h2 {
+    color: #ffcc00;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 1.3rem;
+        word-wrap: break-word;
+    }
+
+    button {
+        padding: 8px 12px;
+        font-size: 13px;
+        margin: 8px 3px;
+    }
+
+    select#filter {
+        font-size: 13px;
+        padding: 6px;
+    }
+
+    th, td {
+        font-size: 12px;
+        padding: 8px 6px;
+        min-width: 90px;
+    }
+
+    #total {
+        font-size: 16px;
+    }
+
+    #history h2 {
+        font-size: 1rem;
+    }
+
+    table, #history table {
+        display: block;
+        width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+
+<h1>Spending Val - <span id="date"></span></h1>
+
+<button class="income-btn" onclick="addEntry('income')">+ Income</button>
+<button class="spend-btn" onclick="addEntry('spend')">- Spend</button>
+
+<br>
+<select id="filter" onchange="filterEntries()">
+    <option value="all">Show All</option>
+    <option value="income">Only Income</option>
+    <option value="spend">Only Spend</option>
+</select>
+
+<!-- Records Table -->
+<div class="table-wrapper">
+    <table id="records">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody id="recordList"></tbody>
+    </table>
+</div>
+
+<div id="total">Total: ₹0</div>
+
+<!-- Monthly History -->
+<div id="history">
+    <h2>📅 Monthly History</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Year</th>
+                    <th>Total Income</th>
+                    <th>Total Spend</th>
+                    <th>Balance</th>
+                </tr>
+            </thead>
+            <tbody id="historyList"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const dateEl = document.getElementById('date');
+const today = new Date();
+let currentMonth = today.getMonth();
+let currentYear = today.getFullYear();
+dateEl.textContent = today.toDateString();
+
+let data = JSON.parse(localStorage.getItem('spendingData')) || [];
+let history = JSON.parse(localStorage.getItem('spendingHistory')) || [];
+
+function saveData() {
+    localStorage.setItem('spendingData', JSON.stringify(data));
+    localStorage.setItem('spendingHistory', JSON.stringify(history));
+}
+
+function addEntry(type) {
+    const value = parseFloat(prompt(`Enter ${type === 'income' ? 'Income' : 'Spend'} amount:`));
+    if (isNaN(value) || value <= 0) return alert("Please enter a valid amount.");
+
+    const name = prompt(`Enter ${type === 'income' ? 'Income name (optional)' : 'Spend name (required)'}:`) || (type === 'income' ? 'Income' : '');
+    if (type === 'spend' && !name.trim()) return alert("Spend name is required.");
+
+    const entry = {
+        type,
+        amount: value,
+        name,
+        date: new Date().toLocaleDateString(),
+        month: currentMonth,
+        year: currentYear
+    };
+
+    data.push(entry);
+    saveData();
+    renderEntries();
+}
+
+function renderEntries(filterType = 'all') {
+    const tbody = document.getElementById('recordList');
+    tbody.innerHTML = '';
+
+    const filtered = data.filter(item => 
+        (filterType === 'all' || item.type === filterType) &&
+        item.month === currentMonth && item.year === currentYear
+    );
+
+    let total = 0;
+    filtered.forEach(item => {
+        const row = `<tr>
+            <td>${item.type}</td>
+            <td>${item.date}</td>
+            <td>₹${item.amount}</td>
+            <td>${item.name}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+        total += item.type === 'income' ? item.amount : -item.amount;
+    });
+
+    document.getElementById('total').textContent = `Total: ₹${total}`;
+    renderHistory();
+}
+
+function filterEntries() {
+    const type = document.getElementById('filter').value;
+    renderEntries(type);
+}
+
+function checkMonthChange() {
+    if (data.length === 0) return;
+
+    const anyEntry = data[0];
+    if (anyEntry.month !== currentMonth || anyEntry.year !== currentYear) {
+        let income = 0, spend = 0;
+        data.forEach(e => {
+            if (e.type === 'income') income += e.amount;
+            else spend += e.amount;
+        });
+
+        const balance = income - spend;
+        history.push({
+            month: anyEntry.month,
+            year: anyEntry.year,
+            income,
+            spend,
+            balance
+        });
+
+        data = [];
+        currentMonth = today.getMonth();
+        currentYear = today.getFullYear();
+        saveData();
+    }
+}
+
+function renderHistory() {
+    const tbody = document.getElementById('historyList');
+    tbody.innerHTML = '';
+
+    history.forEach(item => {
+        const row = `<tr>
+            <td>${new Date(0, item.month).toLocaleString('default', { month: 'long' })}</td>
+            <td>${item.year}</td>
+            <td>₹${item.income}</td>
+            <td>₹${item.spend}</td>
+            <td>₹${item.balance}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+}
+
+checkMonthChange();
+renderEntries();
+</script>
+
+</body>
+</html>
